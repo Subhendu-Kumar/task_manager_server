@@ -2,6 +2,7 @@ from utils.db_util import get_db
 from schemas.auth import SignupUser, LoginUser
 from utils.jwt_util import create_access_token
 from utils.jwt_util import verify_token_bool, verify_token
+from utils.user_res_format_util import format_user_response
 from fastapi import APIRouter, HTTPException, Depends, status
 from utils.password_util import hash_password, verify_password
 
@@ -30,7 +31,7 @@ async def signup(user: SignupUser, db=Depends(get_db)):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create user",
             )
-        return created_user
+        return format_user_response(created_user)
     except HTTPException:
         raise
     except Exception as e:
@@ -58,10 +59,7 @@ async def login(user: LoginUser, db=Depends(get_db)):
         token = create_access_token(
             data={"user": {"id": db_user.id, "email": db_user.email}}
         )
-        return {
-            "token": token,
-            "user": db_user,
-        }
+        return format_user_response(db_user, token=token)
     except HTTPException:
         raise
     except Exception as e:
@@ -89,10 +87,7 @@ async def get_user(db=Depends(get_db), user_data: dict = Depends(verify_token)):
         token = create_access_token(
             data={"user": {"id": db_user.id, "email": db_user.email}}
         )
-        return {
-            "token": token,
-            "user": db_user,
-        }
+        return format_user_response(db_user, token=token)
     except HTTPException:
         raise
     except Exception as e:
