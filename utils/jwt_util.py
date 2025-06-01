@@ -3,11 +3,11 @@ import jwt
 from typing import Dict
 from typing import Optional
 from dotenv import load_dotenv
+from utils.db_util import get_db
 from datetime import datetime, timedelta
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 from jwt import ExpiredSignatureError, InvalidTokenError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from utils.db_util import get_db
 
 load_dotenv()
 security = HTTPBearer()
@@ -33,9 +33,13 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return payload
     except ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired"
+        )
     except InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        )
 
 
 async def verify_token_bool(

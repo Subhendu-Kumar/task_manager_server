@@ -1,8 +1,8 @@
-from fastapi import FastAPI
+from routes import auth, task
+from fastapi import FastAPI, status
 from contextlib import asynccontextmanager
 from utils.db_util import lifespan_manager
 from fastapi.middleware.cors import CORSMiddleware
-from routes import auth, task
 
 
 # Lifespan event handler
@@ -36,16 +36,17 @@ app.include_router(task.router)
 
 
 # Root endpoint
-@app.get("/", tags=["Root"])
+@app.get("/", status_code=status.HTTP_200_OK, tags=["Root"])
 async def root():
     return {
         "docs": "/docs",
+        "redoc": "/redoc",
         "status": "running",
         "message": "FastAPI With Prisma & NeonDB",
     }
 
 
 # Health check endpoint
-@app.get("/health", tags=["Health"])
+@app.get("/health", status_code=status.HTTP_200_OK, tags=["Health"])
 async def health_check():
     return {"status": "healthy", "message": "API is running successfully"}

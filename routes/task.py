@@ -1,14 +1,14 @@
+from typing import List
+from datetime import datetime
 from utils.db_util import get_db
-from fastapi import APIRouter, HTTPException, Depends
 from utils.jwt_util import verify_token
 from schemas.task import TaskCreate, TaskSyncModel
-from datetime import datetime
-from typing import List
+from fastapi import APIRouter, HTTPException, Depends, status
 
 router = APIRouter(prefix="/task", tags=["Task Management"])
 
 
-@router.post("/add", status_code=201)
+@router.post("/add", status_code=status.HTTP_201_CREATED)
 async def create_task(
     task: TaskCreate, db=Depends(get_db), user_data: dict = Depends(verify_token)
 ):
@@ -16,7 +16,9 @@ async def create_task(
         userId = user_data.get("user")["id"]
         db_user = await db.user.find_unique(where={"id": userId})
         if not db_user:
-            raise HTTPException(status_code=400, detail="Invalid user id")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user id"
+            )
         created_task = await db.task.create(
             data={
                 "title": task.title,
@@ -27,34 +29,48 @@ async def create_task(
             }
         )
         if not created_task:
-            raise HTTPException(status_code=500, detail="Failed to create task")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create task",
+            )
         return created_task
     except HTTPException:
         raise
     except Exception as e:
         print(f"Task Creation Error: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal Server Error",
+        )
 
 
-@router.get("/list", status_code=200)
+@router.get("/list", status_code=status.HTTP_200_OK)
 async def list_all_task(db=Depends(get_db), user_data: dict = Depends(verify_token)):
     try:
         userId = user_data.get("user")["id"]
         db_user = await db.user.find_unique(where={"id": userId})
         if not db_user:
-            raise HTTPException(status_code=400, detail="Invalid user id")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user id"
+            )
         tasks = await db.task.find_many(where={"uid": db_user.id})
         if not tasks:
-            raise HTTPException(status_code=404, detail="no tasks found for this user!")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="no tasks found for this user!",
+            )
         return tasks
     except HTTPException:
         raise
     except Exception as e:
         print(f"Task retrive Error: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal Server Error",
+        )
 
 
-@router.delete("/{task_id}", status_code=200)
+@router.delete("/{task_id}", status_code=status.HTTP_200_OK)
 async def delete_task(
     task_id: str, db=Depends(get_db), user_data: dict = Depends(verify_token)
 ):
@@ -62,11 +78,14 @@ async def delete_task(
         userId = user_data.get("user")["id"]
         db_user = await db.user.find_unique(where={"id": userId})
         if not db_user:
-            raise HTTPException(status_code=400, detail="User not authenticate")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="User not authenticate"
+            )
         task = await db.task.find_unique(where={"id": task_id, "uid": db_user.id})
         if not task:
             raise HTTPException(
-                status_code=404, detail="Task not found or does not belong to user"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found or does not belong to user",
             )
         await db.task.delete(where={"id": task.id})
         return {"detail": "Task deleted successfully", "success": True}
@@ -74,10 +93,13 @@ async def delete_task(
         raise
     except Exception as e:
         print(f"Task deletion Error: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal Server Error",
+        )
 
 
-@router.post("sync/", status_code=201)
+@router.post("sync/", status_code=status.HTTP_201_CREATED)
 async def sync_tasks(
     tasks=List[TaskSyncModel],
     db=Depends(get_db),
@@ -87,7 +109,9 @@ async def sync_tasks(
         userId = user_data.get("user")["id"]
         db_user = await db.user.find_unique(where={"id": userId})
         if not db_user:
-            raise HTTPException(status_code=400, detail="User not authenticate")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="User not authenticate"
+            )
         to_insert = []
         for t in tasks:
             to_insert.append(
@@ -104,10 +128,16 @@ async def sync_tasks(
             )
         inserted = await db.task.create_many(data=to_insert, skip_duplicates=False)
         if not inserted:
-            raise HTTPException(status_code=500, detail="Failed to sync tasks")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to sync tasks",
+            )
         return inserted
     except HTTPException:
         raise
     except Exception as e:
         print(f"Task Syncing Error: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal Server Error",
+        )
