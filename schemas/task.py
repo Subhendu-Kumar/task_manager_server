@@ -1,12 +1,13 @@
 from datetime import datetime
 from pydantic import BaseModel
+from typing import Optional
 
 
 class TaskCreate(BaseModel):
     title: str
     description: str
     hexColor: str
-    dueAt: datetime
+    dueAt: Optional[datetime] = None
 
 
 class TaskSyncModel(BaseModel):
