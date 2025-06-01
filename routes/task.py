@@ -1,7 +1,9 @@
 from utils.db_util import get_db
 from fastapi import APIRouter, HTTPException, Depends
 from utils.jwt_util import verify_token
-from schemas.task import TaskCreate
+from schemas.task import TaskCreate, TaskSyncModel
+from datetime import datetime
+from typing import List
 
 router = APIRouter(prefix="/task", tags=["Task Management"])
 
@@ -20,7 +22,7 @@ async def create_task(
                 "title": task.title,
                 "description": task.description,
                 "hexColor": task.hexColor,
-                "dueAt": task.dueAt,
+                "dueAt": datetime.fromisoformat(task.dueAt),
                 "uid": db_user.id,
             }
         )
@@ -72,4 +74,40 @@ async def delete_task(
         raise
     except Exception as e:
         print(f"Task deletion Error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+@router.post("sync/", status_code=201)
+async def sync_tasks(
+    tasks=List[TaskSyncModel],
+    db=Depends(get_db),
+    user_data: dict = Depends(verify_token),
+):
+    try:
+        userId = user_data.get("user")["id"]
+        db_user = await db.user.find_unique(where={"id": userId})
+        if not db_user:
+            raise HTTPException(status_code=400, detail="User not authenticate")
+        to_insert = []
+        for t in tasks:
+            to_insert.append(
+                {
+                    "id": t.id,
+                    "title": t.title,
+                    "description": t.description,
+                    "hexColor": t.hexColor,
+                    "uid": db_user.id,
+                    "dueAt": datetime.fromisoformat(t.dueAt),
+                    "createdAt": datetime.fromisoformat(t.createdAt),
+                    "updatedAt": datetime.fromisoformat(t.updatedAt),
+                }
+            )
+        inserted = await db.task.create_many(data=to_insert, skip_duplicates=False)
+        if not inserted:
+            raise HTTPException(status_code=500, detail="Failed to sync tasks")
+        return inserted
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Task Syncing Error: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
