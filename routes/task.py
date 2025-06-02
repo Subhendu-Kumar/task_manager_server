@@ -19,22 +19,14 @@ async def create_task(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user id"
             )
-        data = {}
+        data = {
+            "title": task.title,
+            "description": task.description,
+            "hexColor": task.hexColor,
+            "uid": db_user.id,
+        }
         if task.dueAt:
-            data = {
-                "title": task.title,
-                "description": task.description,
-                "hexColor": task.hexColor,
-                "dueAt": datetime.fromisoformat(task.dueAt),
-                "uid": db_user.id,
-            }
-        else:
-            data = {
-                "title": task.title,
-                "description": task.description,
-                "hexColor": task.hexColor,
-                "uid": db_user.id,
-            }
+            data["dueAt"] = task.dueAt
         created_task = await db.task.create(data=data)
         if not created_task:
             raise HTTPException(
@@ -107,7 +99,7 @@ async def delete_task(
         )
 
 
-@router.post("sync/", status_code=status.HTTP_201_CREATED)
+@router.post("/sync", status_code=status.HTTP_201_CREATED)
 async def sync_tasks(
     tasks=List[TaskSyncModel],
     db=Depends(get_db),
